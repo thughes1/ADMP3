@@ -1,0 +1,9 @@
+import pandas as pd 
+
+# Adds extra column with name of borough s.t. they can be combined without losing context 
+def loadCSV(filename,year=2018): 
+    # Each filename is consistent, i.e. 2018.csv, 2019.csv ... 
+    df = pd.read_csv('%s.csv' % year)
+    year+=1
+    loadCSV(filename,year)
+
