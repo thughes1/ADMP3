@@ -1,0 +1,178 @@
+-- Time dim table 
+CREATE TABLE dimtime(
+time_id STRING, year INTEGER, month INTEGER, day INTEGER, hour INTEGER, full_date STRING
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," 
+STORED AS TEXTFILE
+TBLPROPERTIES ("skip.header.line.count"="2"); 
+
+-- Vehicle dim table 
+CREATE TABLE dimvehicle(
+time_id STRING,borough STRING,cars_and_taxis INTEGER,motorbikes INTEGER,buses_and_coaches INTEGER,lgvs INTEGER,hgvs INTEGER, all_vehicles INTEGER
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," 
+STORED AS TEXTFILE
+TBLPROPERTIES ("skip.header.line.count"="2"); 
+
+-- Borough dim table 
+CREATE TABLE dimborough(
+Borough STRING
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," 
+STORED AS TEXTFILE
+TBLPROPERTIES ("skip.header.line.count"="1"); 
+
+-- Emission dim table 
+CREATE TABLE dimemission(
+time_id STRING,borough STRING,no2 DOUBLE
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," 
+STORED AS TEXTFILE
+TBLPROPERTIES ("skip.header.line.count"="2"); 
+
+-- Population dim table
+CREATE TABLE dimpopulation(
+time_id STRING,borough STRING,population INTEGER,area DOUBLE
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," 
+STORED AS TEXTFILE
+TBLPROPERTIES ("skip.header.line.count"="2"); 
+ 
+LOAD DATA INPATH '/user/maria_dev/assignment/DimTime.csv' OVERWRITE INTO TABLE  dimtime;
+LOAD DATA INPATH '/user/maria_dev/assignment/DimPopulation.csv' OVERWRITE INTO TABLE  dimpopulation;
+LOAD DATA INPATH '/user/maria_dev/assignment/DimVehicle.csv' OVERWRITE INTO TABLE  dimvehicle;
+LOAD DATA INPATH '/user/maria_dev/assignment/DimBorough.csv' OVERWRITE INTO TABLE  dimborough;
+LOAD DATA INPATH '/user/maria_dev/assignment/DimEmission.csv' OVERWRITE INTO TABLE  dimemission;
+
+select * from dimborough limit 10;  
+------------------------------- fact tables --------------------------------------------------
+-- FACT Q1
+CREATE TABLE factq1(
+borough STRING, year INTEGER, month INTEGER, averageno2 DOUBLE 
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," 
+STORED AS TEXTFILE;
+
+-- FACT Q2
+CREATE TABLE factq2(
+borough STRING, year INTEGER, no2percapita DOUBLE 
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," 
+STORED AS TEXTFILE;
+
+-- FACT Q3
+CREATE TABLE factq3(
+borough STRING, year INTEGER, no2pervehicle DOUBLE 
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," 
+STORED AS TEXTFILE;
+
+-- FACT Q4
+CREATE TABLE factq4(
+borough STRING, year INTEGER, no2_car_and_taxis INTEGER, no2_motorbikes INTEGER, no2_buses_and_coaches INTEGER, no2_lgvs INTEGER, no2_hgvs INTEGER  
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," 
+STORED AS TEXTFILE; 
+
+-- FACT Q5 
+CREATE TABLE factq5(
+borough STRING, Hour INTEGER, Vehicle_Count_Average INTEGER, NO2_Average DOUBLE
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," 
+STORED AS TEXTFILE;
+------------------------------------ Factq1 ---------------------------------------
+CREATE TABLE factq1 AS
+SELECT
+  dimborough.borough,
+  dimtime.year,
+  dimTime.month,
+  AVG(dimemission.no2) AS average_no2
+FROM
+  dimemission
+  JOIN dimtime ON dimemission.time_id = dimtime.time_id
+  JOIN dimBorough ON dimEmission.borough = dimBorough.borough
+GROUP BY
+  dimBorough.borough,
+  dimTime.Year,
+  dimTime.Month;
+
+------------------------------------ Factq2 ---------------------------------------
+CREATE TABLE factq2 AS
+SELECT
+    dimborough.borough,
+    dimtime.Year,
+    AVG(dimEmission.NO2 / dimPopulation.population) AS avg_no2_per_capita
+FROM 
+    dimEmission
+    JOIN dimTime ON dimEmission.time_id = dimime.time_id
+    JOIN dimBorough ON dimEmission.borough = dimBorough.borough
+    JOIN dimPopulation ON dimEmission.borough = dimPopulation.borough AND dimemission.time_id = dimPopulation.time_id
+GROUP BY 
+    dimborough.borough,
+    dimTime.Year;
+
+------------------------------------ Factq3 ---------------------------------------
+CREATE TABLE factq3 AS
+SELECT
+    dimborough.borough,
+    dimTime.Year,
+    AVG(dimEmission.NO2 / dimvehicle.all_vehicles) AS avg_no2_per_vehicle
+FROM 
+    dimemission
+    JOIN dimTime ON dimEmission.time_id = dimTime.time_id
+    JOIN dimBorough ON dimEmission.borough = dimBorough.borough
+    JOIN dimvehicle ON dimEmission.borough = dimvehicle.borough AND dimEmission.time_id = dimvehicle.time_id 
+GROUP BY 
+    dimborough.borough,
+    dimTime.Year;
+
+------------------------------------ Factq4 ---------------------------------------
+CREATE TABLE factq4 AS
+SELECT
+    dimborough.borough,
+    dimTime.Year,
+    AVG(dimEmission.NO2 / dimvehicle.cars_and_taxis) AS avg_no2_cars_and_taxis,
+    AVG(dimEmission.NO2 / dimvehicle.motorbikes) AS avg_no2_motorbikes,
+    AVG(dimEmission.NO2 / dimvehicle.buses_and_coaches) AS avg_no2_buses_and_coaches,
+    AVG(dimEmission.NO2 / dimvehicle.lgvs) AS avg_no2_lgvs,
+    AVG(dimEmission.NO2 / dimvehicle.hgvs) AS avg_no2_hgvs
+FROM 
+    dimemission
+    JOIN dimTime ON dimEmission.time_id = dimtime.time_id
+    JOIN dimBorough ON dimEmission.borough = dimBorough.borough
+    JOIN dimvehicle ON dimEmission.borough = dimvehicle.borough AND dimEmission.time_id = dimvehicle.time_id 
+GROUP BY 
+    dimborough.borough,
+    dimTime.Year;
+
+------------------------------------ Factq5 ---------------------------------------
+CREATE TABLE factq5 AS
+SELECT
+    dimborough.borough,
+    dimTime.Hour,
+    AVG(dimvehicle.all_vehicles) AS avg_vehicle_count,
+    AVG(dimEmission.no2) AS avg_no2
+FROM 
+    dimemission
+    JOIN dimTime ON dimEmission.time_id = dimtime.time_id
+    JOIN dimBorough ON dimEmission.borough = dimBorough.borough 
+    JOIN dimvehicle ON dimEmission.borough = dimvehicle.borough AND dimEmission.time_id = dimvehicle.time_id 
+GROUP BY 
+    dimborough.borough,
+    dimTime.Hour;
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
